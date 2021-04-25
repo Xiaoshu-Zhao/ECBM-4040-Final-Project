@@ -1,3 +1,4 @@
+from os import listdir, makedirs
 from os.path import join, isdir
 from PIL import Image
 import tensorflow as tf
@@ -5,17 +6,25 @@ from tensorflow.keras.applications import InceptionResNetV2
 from tensorflow.keras import Model
 from utils.prep import prep_for_inception, RGB_to_lab
 
-
+"""
+initialize Inception-ResNet-v2 Feature Extractor
+"""
 pre_trained_model = InceptionResNetV2(weights='imagenet', input_shape=(299,299,3))
 feature_extractor = Model(inputs=pre_trained_model.input,
                               outputs=pre_trained_model.layers[-2].output)
     
 def get_emb(img):
+    """
+    output 1536*1 feature representation of image
+    """
     incep_img=prep_for_inception(img)
     embs=feature_extractor.predict(incep_img)
     return embs
     
 def tfrecordwriter(resized_dir, img_list, record_path, file_name):
+    """
+    write tfrecord to destination file
+    """
     if not isdir(resized_dir):
         raise Exception('No resized images found')
     if not isdir(record_path):
@@ -38,5 +47,7 @@ def tfrecordwriter(resized_dir, img_list, record_path, file_name):
                      'img_embedding':tf.train.Feature(float_list=tf.train.FloatList(value=embs.flatten()))}))
         writer.write(example.SerializeToString())
         count+=1
+        if count%10000==0:
+            print(f'{count} records wrote')
     writer.close()
     print(f'Successfully write {count} records, stored at {join(record_path, file_name)}')
